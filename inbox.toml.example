@@ -1,10 +1,3 @@
-### inbox
-
-Inbox is a small upload server with pushover notification.
-
-`inbox.toml`  
-
-``` toml
 
 # 25478
 # :25478
@@ -13,10 +6,12 @@ Inbox is a small upload server with pushover notification.
 
 listen = ":25478"
 
+
 # tls crt and key file
 
 crt = "srv.crt"
 key = "srv.key"
+
 
 # pushover config
 
@@ -24,5 +19,3 @@ key = "srv.key"
   app = "API Token"
   user = "Your User Key"
   
-```
-
