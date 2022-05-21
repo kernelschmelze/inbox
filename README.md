@@ -3,7 +3,8 @@
 Inbox is a simple upload server with pushover notification.
 
 ``` bash
-echo "Hallo Freund" | curl -F file=@- -F "from=Kay" -F "subject=re: inbox" http://localhost:25478/inbox
+echo "Hallo Freund" | \
+  curl -F file=@- -F "from=Kay" -F "subject=re: inbox" http://localhost:25478/inbox
 ```
 
 Persist to disk.  
