@@ -1,6 +1,17 @@
 ### inbox
 
-Inbox is a small upload server with pushover notification.
+Inbox is a simple upload server with pushover notification.
+
+``` bash
+echo "Hallo Freund" | curl -F file=@- -F "from=Kay" -F "subject=re: inbox" http://localhost:25478/inbox
+
+```
+
+![](screenshot/screenshot1.jpeg)
+
+``` bash
+./inbox -f inbox.toml
+```
 
 `inbox.toml`  
 
