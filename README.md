@@ -26,7 +26,13 @@ With optional pushover notification.
 
 ![](screenshot/screenshot1.jpeg)
 
+## Install
 
+```bash
+git clone https://github.com/kernelschmelze/inbox.git
+cd inbox
+go build
+```
 
 ## Usage
 
