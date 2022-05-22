@@ -91,7 +91,7 @@ path = "./data"
 # default 0, no housekeeping
 
 [housekeeping]
-  days  = 30
+  days = 30
 
 # pushover config
 
