@@ -6,15 +6,14 @@
 
 listen = ":25478"
 
-# inbox data path
-
-path = "./data"
-
 # tls crt and key file
 
 crt = "srv.crt"
 key = "srv.key"
 
+# inbox data path
+
+path = "./data"
 
 # pushover config
 

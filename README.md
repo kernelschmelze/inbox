@@ -79,6 +79,10 @@ listen = ":25478"
 crt = "srv.crt"
 key = "srv.key"
 
+# inbox data path
+
+path = "./data"
+
 # pushover config
 
 [pushover]
