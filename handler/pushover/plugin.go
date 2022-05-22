@@ -17,8 +17,6 @@ type Config struct {
 }
 
 type Plugin struct {
-	app       *po.Pushover
-	recipient *po.Recipient
 	data      chan model.Inbox
 	kill      chan struct{}
 }
