@@ -1,6 +1,6 @@
 # inbox
 
-Inbox is a simple upload server with [Pushover](https://pushover.net/) notification.
+Inbox is a simple upload server with [Pushover](https://pushover.net/) notification for messages or small files.  
 
 ``` bash
 echo "Hallo Freund" | \
