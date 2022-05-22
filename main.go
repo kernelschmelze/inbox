@@ -6,6 +6,9 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"os/user"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/kernelschmelze/inbox/handler"
@@ -25,6 +28,7 @@ type config struct {
 	Listen   string
 	Crt      string
 	Key      string
+	Path     string
 	Pushover pushover.Config
 }
 
@@ -39,7 +43,22 @@ func main() {
 		log.Errorf("read config failed, err=%s", err)
 	}
 
-	handler := handler.New("./data", maxFileSize)
+	if len(config.Path) == 0 {
+		config.Path = "./data"
+	}
+
+	config.Path, err = expandPath(config.Path)
+	if err != nil {
+		log.Errorf("get data path failed, err=%s", err)
+	} else {
+		log.Infof("use data path '%s'", config.Path)
+	}
+
+	if len(config.Listen) == 0 {
+		config.Listen = ":25478"
+	}
+
+	handler := handler.New(config.Path, maxFileSize)
 
 	if len(config.Pushover.User) != 0 && len(config.Pushover.App) != 0 {
 		pushover := pushover.New(config.Pushover)
@@ -125,4 +144,22 @@ func readConfig(path string) (config, error) {
 	}
 
 	return c, err
+}
+
+func expandPath(path string) (string, error) {
+
+	if path == "" {
+		return "", nil
+	}
+
+	if strings.HasPrefix(path, "~") {
+		usr, err := user.Current()
+		if err != nil {
+			return "", err
+		}
+		path = strings.Replace(path, "~", usr.HomeDir, 1)
+	}
+
+	return filepath.Abs(path)
+
 }

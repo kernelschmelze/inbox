@@ -6,6 +6,9 @@
 
 listen = ":25478"
 
+# inbox data path
+
+path = "./data"
 
 # tls crt and key file
 
