@@ -71,17 +71,27 @@ go build
 # :25478
 # http://127.0.0.1:25478
 # https://127.0.0.1:25478
+# default :25478
 
 listen = ":25478"
 
 # tls crt and key file
+# default empty
 
 crt = "srv.crt"
 key = "srv.key"
 
 # inbox data path
+# default ./data
 
 path = "./data"
+
+# housekeeping
+# remove files older then x days
+# default 0, no housekeeping
+
+[housekeeping]
+  days  = 30
 
 # pushover config
 

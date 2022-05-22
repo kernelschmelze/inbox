@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/kernelschmelze/inbox/handler"
+	"github.com/kernelschmelze/inbox/handler/housekeeping"
 	"github.com/kernelschmelze/inbox/handler/pushover"
 
 	log "github.com/kernelschmelze/pkg/logger"
@@ -25,11 +26,12 @@ const (
 )
 
 type config struct {
-	Listen   string
-	Crt      string
-	Key      string
-	Path     string
-	Pushover pushover.Config
+	Listen       string
+	Crt          string
+	Key          string
+	Path         string
+	Pushover     pushover.Config
+	Housekeeping housekeeping.Config
 }
 
 func main() {
@@ -38,10 +40,14 @@ func main() {
 
 	flag.Parse()
 
+	// read config from file
+
 	config, err := readConfig(*path)
 	if err != nil {
 		log.Errorf("read config failed, err=%s", err)
 	}
+
+	// check config and set defaults if necessary
 
 	if len(config.Path) == 0 {
 		config.Path = "./data"
@@ -58,12 +64,26 @@ func main() {
 		config.Listen = ":25478"
 	}
 
+	// http handler
+
 	handler := handler.New(config.Path, maxFileSize)
+
+	// pushover plugin
 
 	if len(config.Pushover.User) != 0 && len(config.Pushover.App) != 0 {
 		pushover := pushover.New(config.Pushover)
 		handler.AddPlugin(pushover)
 	}
+
+	// housekeeping plugin
+
+	if config.Housekeeping.Days > 0 {
+		config.Housekeeping.Path = config.Path
+		housekeeping := housekeeping.New(config.Housekeeping)
+		handler.AddPlugin(housekeeping)
+	}
+
+	// run the server
 
 	server := srv.New(onListen, onShutdown)
 
