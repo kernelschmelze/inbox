@@ -1,6 +1,7 @@
 package pushover
 
 import (
+	"encoding/base64"
 	"fmt"
 	"time"
 
@@ -17,14 +18,14 @@ type Config struct {
 }
 
 type Plugin struct {
-	data      chan model.Inbox
-	kill      chan struct{}
+	data chan *model.Inbox
+	kill chan struct{}
 }
 
 func New(config Config) *Plugin {
 
 	plugin := &Plugin{
-		data: make(chan model.Inbox, 50),
+		data: make(chan *model.Inbox, 50),
 		kill: make(chan struct{}),
 	}
 
@@ -37,7 +38,7 @@ func (p *Plugin) Close() {
 	close(p.kill)
 }
 
-func (p *Plugin) Process(inbox model.Inbox) {
+func (p *Plugin) Process(inbox *model.Inbox) {
 
 	select {
 	case p.data <- inbox:
@@ -61,7 +62,7 @@ func (p *Plugin) run(config Config) {
 
 		case inbox := <-p.data:
 
-			if app == nil || recipient == nil {
+			if app == nil || recipient == nil || inbox == nil {
 				continue
 			}
 
@@ -77,8 +78,13 @@ func (p *Plugin) run(config Config) {
 			}
 
 			if len(inbox.Payload) > 0 {
-				if inbox.Base64 && len(inbox.Payload)+len(msg)+3 > po.MessageMaxLength {
-					msg = msg + fmt.Sprintf("\n%s\n", "payload size exceeds the limit")
+				if !isPrintable(inbox.Payload) {
+					payload := base64.StdEncoding.EncodeToString(inbox.Payload)
+					if len(payload)+len(msg)+3 > po.MessageMaxLength {
+						msg = msg + fmt.Sprintf("\n%s\n", "payload size exceeds the limit")
+					} else {
+						msg = msg + fmt.Sprintf("\n%s\n", payload)
+					}
 				} else {
 					msg = msg + fmt.Sprintf("\n%s\n", inbox.Payload)
 				}
@@ -111,4 +117,14 @@ func getTitle(names ...string) string {
 		}
 	}
 	return ""
+}
+
+func isPrintable(bytes []byte) bool {
+	for i := range bytes {
+		c := bytes[i]
+		if (c < 32 || c > 126) && (c != 9 && c != 10 && c != 13) {
+			return false
+		}
+	}
+	return true
 }

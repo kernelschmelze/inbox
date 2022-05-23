@@ -12,8 +12,9 @@ import (
 	"time"
 
 	"github.com/kernelschmelze/inbox/handler"
-	"github.com/kernelschmelze/inbox/handler/housekeeping"
 	"github.com/kernelschmelze/inbox/handler/pushover"
+	"github.com/kernelschmelze/inbox/store"
+	"github.com/kernelschmelze/inbox/store/json"
 
 	log "github.com/kernelschmelze/pkg/logger"
 	"github.com/kernelschmelze/pkg/srv"
@@ -26,12 +27,12 @@ const (
 )
 
 type config struct {
-	Listen       string
-	Crt          string
-	Key          string
-	Path         string
-	Pushover     pushover.Config
-	Housekeeping housekeeping.Config
+	Listen    string
+	Crt       string
+	Key       string
+	Path      string
+	Pushover  pushover.Config
+	JsonStore jsonstore.Config
 }
 
 func main() {
@@ -47,26 +48,28 @@ func main() {
 		log.Errorf("read config failed, err=%s", err)
 	}
 
-	// check config and set defaults if necessary
+	var store store.Store
 
-	if len(config.Path) == 0 {
-		config.Path = "./data"
-	}
+	// currently only a simple json store is supported
 
-	config.Path, err = expandPath(config.Path)
-	if err != nil {
-		log.Errorf("get data path failed, err=%s", err)
-	} else {
-		log.Infof("use data path '%s'", config.Path)
-	}
+	if store == nil {
 
-	if len(config.Listen) == 0 {
-		config.Listen = ":25478"
+		if len(config.JsonStore.Path) == 0 {
+			config.JsonStore.Path = "./data"
+		}
+
+		if config.JsonStore.Path, err = expandPath(config.JsonStore.Path); err != nil {
+			log.Errorf("get data path failed, err=%s", err)
+		} else {
+			log.Infof("use data path '%s'", config.JsonStore.Path)
+			store = jsonstore.New(config.JsonStore)
+		}
+
 	}
 
 	// http handler
 
-	handler := handler.New(config.Path, maxFileSize)
+	handler := handler.New(maxFileSize, store)
 
 	// pushover plugin
 
@@ -75,15 +78,11 @@ func main() {
 		handler.AddPlugin(pushover)
 	}
 
-	// housekeeping plugin
-
-	if config.Housekeeping.Days > 0 {
-		config.Housekeeping.Path = config.Path
-		housekeeping := housekeeping.New(config.Housekeeping)
-		handler.AddPlugin(housekeeping)
-	}
-
 	// run the server
+
+	if len(config.Listen) == 0 {
+		config.Listen = ":25478"
+	}
 
 	server := srv.New(onListen, onShutdown)
 
@@ -101,6 +100,9 @@ func main() {
 	defer func() {
 		server.Close()
 		handler.Close()
+		if store != nil {
+			store.Close()
+		}
 	}()
 
 	signalHandler()

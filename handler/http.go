@@ -1,42 +1,37 @@
 package handler
 
 import (
-	"encoding/base64"
-	"encoding/json"
 	"io/ioutil"
 	"net/http"
-	"os"
-	"path"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/kernelschmelze/inbox/handler/limiter"
 	"github.com/kernelschmelze/inbox/model"
+	"github.com/kernelschmelze/inbox/store"
 
 	log "github.com/kernelschmelze/pkg/logger"
-
-	"github.com/google/uuid"
 )
 
 type Handler struct {
-	documentRoot string
-	maxFileSize  int64
-	limiter      *limiter.IPRateLimiter
-	plugins      []model.Plugin
-	pGuard       sync.RWMutex
-	process      chan model.Inbox
-	kill         chan struct{}
+	maxFileSize int64
+	store       store.Store
+	limiter     *limiter.IPRateLimiter
+	plugins     []model.Plugin
+	pGuard      sync.RWMutex
+	process     chan *model.Inbox
+	kill        chan struct{}
 }
 
-func New(documentRoot string, maxFileSize int64) *Handler {
+func New(maxFileSize int64, store store.Store) *Handler {
 
 	handler := &Handler{
-		documentRoot: documentRoot,
-		maxFileSize:  maxFileSize,
-		limiter:      limiter.NewIPRateLimiter(1, 5),
-		process:      make(chan model.Inbox, 100),
-		kill:         make(chan struct{}),
+		maxFileSize: maxFileSize,
+		store:       store,
+		limiter:     limiter.NewIPRateLimiter(1, 5),
+		process:     make(chan *model.Inbox, 100),
+		kill:        make(chan struct{}),
 	}
 	go handler.run()
 
@@ -91,16 +86,9 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		id, err := uuid.NewRandom()
-		if err != nil {
-			log.Errorf("%T get uuid failed, err=%s", err)
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-			return
-		}
-
 		body, err := ioutil.ReadAll(file)
 		if err != nil {
-			log.Errorf("%T read data failed, err=%s", err)
+			log.Errorf("%T read data failed, err=%s", h, err)
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 			return
 		}
@@ -121,16 +109,9 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		path := path.Join(h.documentRoot, id.String())
-		if err = mkdir(path); err != nil {
-			log.Errorf("%T path failed, err=%s", err)
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-			return
-		}
-
-		output, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
+		msg, err := model.NewInbox()
 		if err != nil {
-			log.Errorf("%T open file failed, err=%s", err)
+			log.Errorf("%T get new inbox failed, err=%s", h, err)
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 			return
 		}
@@ -140,39 +121,33 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			filename = ""
 		}
 
-		defer output.Close()
+		msg.From = from
+		msg.Subject = subject
+		msg.Filename = filename
+		msg.Payload = body
 
-		var b64 bool
+		id := msg.ID
 
-		if b64 = !isPrintable(body); b64 == true {
-			body = []byte(base64.StdEncoding.EncodeToString(body))
-		}
+		if h.store != nil {
 
-		msg := model.Inbox{
-			Time:     time.Now(),
-			ID:       id.String(),
-			From:     from,
-			Subject:  subject,
-			Filename: filename,
-			Base64:   b64,
-			Payload:  body,
-		}
+			id, err = h.store.Set(msg)
 
-		encoder := json.NewEncoder(output)
-		if err = encoder.Encode(msg); err != nil {
-			log.Errorf("%T encode failed, err=%s", err)
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-			return
+			if err != nil {
+				log.Errorf("%T store data failed, err=%s", h, err)
+				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+				return
+			}
+
 		}
 
 		select {
 		case h.process <- msg:
-		case <-time.After(1 * time.Second):
+		case <-time.After(250 * time.Millisecond):
 			log.Errorf("%T dispatch message failed, err=channel busy", h)
 		}
 
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(id.String()))
+		w.Write([]byte(id))
 
 	default:
 		http.Error(w, "", http.StatusMethodNotAllowed)
@@ -191,6 +166,10 @@ func (h *Handler) run() {
 
 		case msg := <-h.process:
 
+			if msg == nil {
+				continue
+			}
+
 			h.pGuard.RLock()
 
 			for _, plugin := range h.plugins {
@@ -203,24 +182,4 @@ func (h *Handler) run() {
 
 	}
 
-}
-
-func mkdir(file string) error {
-	path := file
-	index := strings.LastIndex(file, "/")
-	if index > 0 {
-		path = file[0:index]
-	}
-	err := os.MkdirAll(path, 0700)
-	return err
-}
-
-func isPrintable(bytes []byte) bool {
-	for i := range bytes {
-		c := bytes[i]
-		if (c < 32 || c > 126) && (c != 9 && c != 10 && c != 13) {
-			return false
-		}
-	}
-	return true
 }

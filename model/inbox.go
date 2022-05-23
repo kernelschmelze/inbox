@@ -2,6 +2,8 @@ package model
 
 import (
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type Inbox struct {
@@ -10,6 +12,20 @@ type Inbox struct {
 	From     string    `json:"from,omitempty"`
 	Subject  string    `json:"subject,omitempty"`
 	Filename string    `json:"filename,omitempty"`
-	Base64   bool      `json:"base64,omitempty"`
 	Payload  []byte    `json:"payload,omitempty"`
+}
+
+func NewInbox() (*Inbox, error) {
+
+	inbox := &Inbox{
+		Time: time.Now(),
+	}
+
+	id, err := uuid.NewRandom()
+	if err == nil {
+		inbox.ID = id.String()
+	}
+
+	return inbox, err
+
 }

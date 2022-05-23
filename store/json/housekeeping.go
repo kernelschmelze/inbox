@@ -1,4 +1,4 @@
-package housekeeping
+package jsonstore
 
 import (
 	"io/ioutil"
@@ -6,42 +6,12 @@ import (
 	"path"
 	"time"
 
-	"github.com/kernelschmelze/inbox/model"
-
 	log "github.com/kernelschmelze/pkg/logger"
 
 	"github.com/google/uuid"
 )
 
-type Config struct {
-	Days int
-	Path string
-}
-
-type Plugin struct {
-	kill chan struct{}
-}
-
-func New(config Config) *Plugin {
-
-	plugin := &Plugin{
-		kill: make(chan struct{}),
-	}
-
-	go plugin.run(config)
-
-	return plugin
-}
-
-func (p *Plugin) Close() {
-	close(p.kill)
-}
-
-func (p *Plugin) Process(inbox model.Inbox) {
-
-}
-
-func (p *Plugin) run(config Config) {
+func (s *Store) run(config Config) {
 
 	keep := time.Duration(config.Days) * time.Hour * 24
 
@@ -51,7 +21,7 @@ func (p *Plugin) run(config Config) {
 
 		select {
 
-		case <-p.kill:
+		case <-s.kill:
 			return
 
 		case <-time.After(interval):
@@ -79,16 +49,16 @@ func (p *Plugin) run(config Config) {
 					name := path.Join(config.Path, file.Name())
 
 					if err := os.Remove(name); err == nil {
-						log.Infof("%T remove outdated file '%s'", p, name)
+						log.Infof("%T remove outdated file '%s'", s, name)
 					} else {
-						log.Errorf("%T remove outdated file '%s' failed, err=%s", p, name, err)
+						log.Errorf("%T remove outdated file '%s' failed, err=%s", s, name, err)
 					}
 
 				}
 
 			}
 
-			interval = 24 * time.Hour // regular interval
+			interval = 1 * time.Hour // regular interval
 
 		}
 

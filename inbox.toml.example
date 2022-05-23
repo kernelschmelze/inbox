@@ -13,17 +13,13 @@ listen = ":25478"
 crt = "srv.crt"
 key = "srv.key"
 
-# inbox data path
-# default ./data
+# simple json store
+# default path ./data
+# default days 0, no housekeeping
 
+[jsonstore]
 path = "./data"
-
-# housekeeping
-# remove files older then x days
-# default 0, no housekeeping
-
-[housekeeping]
-  days = 1
+days = 30
 
 # pushover config
 

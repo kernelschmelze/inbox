@@ -1,6 +1,6 @@
 package model
 
 type Plugin interface {
-	Process(i Inbox)
+	Process(*Inbox)
 	Close()
 }
