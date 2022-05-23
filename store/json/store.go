@@ -2,7 +2,7 @@ package jsonstore
 
 import (
 	"encoding/json"
-	"errors"
+	"io/ioutil"
 	"os"
 	"path"
 	"strings"
@@ -36,7 +36,18 @@ func New(config Config) *Store {
 }
 
 func (s *Store) Get(id string) (*model.Inbox, error) {
-	return nil, errors.New("not supperted yet")
+
+	inbox := &model.Inbox{}
+
+	path := path.Join(s.config.Path, id)
+
+	buffer, err := ioutil.ReadFile(path)
+	if err == nil {
+		err = json.Unmarshal(buffer, &inbox)
+	}
+
+	return inbox, err
+
 }
 
 func (s *Store) Set(i *model.Inbox) (string, error) {
