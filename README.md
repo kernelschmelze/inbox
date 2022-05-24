@@ -1,4 +1,4 @@
-# inbox
+# Inbox
 
 Inbox is a simple upload server with [Pushover](https://pushover.net/) notification for messages or small files.  
 
@@ -22,7 +22,7 @@ Persist upload to disk.
 
 ```
 
-With optional Pushover notification.  
+With Pushover notification.  
 
 ![](screenshot/screenshot1.jpeg)
 
@@ -44,8 +44,6 @@ echo "Hallo Freund" | \
   curl -F file=@- -F "from=Kay" -F "subject=encrypted message" http://localhost:25478/inbox
 
 ``` 
-
-
 
 ## Install
 
@@ -96,4 +94,8 @@ days = 30
   user = "Your User Key"
   
 ```
+
+## Uberspace setup
+
+If you use [uberspace](https://uberspace.de/) as hoster, then [here](uberspace.md) is the setup.  
 
